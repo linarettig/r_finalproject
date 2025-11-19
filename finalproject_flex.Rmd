@@ -1,0 +1,51 @@
+---
+title: "Air Quality In National Park"
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    social: menu
+    source_code: https://github.com/linarettig/r_finalproject
+    theme: simplex
+---
+
+```{r setup, include=FALSE}
+
+library(shiny)
+library(plotly)
+library(leaflet)
+library(tidyverse)
+library(sf)
+
+# Read in Data
+
+```
+
+Sidebar {.sidebar}
+======================================================================
+
+```{r}
+
+```
+
+
+Main
+======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+

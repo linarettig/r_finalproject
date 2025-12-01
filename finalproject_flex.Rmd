@@ -25,7 +25,6 @@ library(sf)
 Sidebar {.sidebar}
 ======================================================================
 
-
 ### **About the Data**
 
 This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016. Additional data on state populations and entrance fees are included to enable regional and temporal comparisons.
@@ -43,7 +42,7 @@ The dashboard allows users to explore:
 Use:
 - The **sidebar controls** to filter years or regions  
 - The **interactive plots** (hover to see values)  
-- Tabs and rows to explore different panels in the dashboard  
+- Tabs and rows to explore different panels in the dashboard 
 
 
 ```{r}

@@ -11,16 +11,60 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-
+library(flexdashboard)
 library(shiny)
 library(plotly)
 library(leaflet)
 library(tidyverse)
 library(sf)
 library(dplyr)
+library(scales)
 
 # Read in Data
 
+locations <- read_csv("data/locations.csv")
+visits <- read_csv("data/All National Parks Visitation 1904-2016.csv")
+state_pop <- read_csv("data/state_pop.csv")
+gas <- read_csv("data/gas_price.csv")
+national_parks <- read_csv("data/national_parks.csv")
+
+# Clean data
+
+visits <- visits %>%
+  rename(park = Parkname, year = Year, visitors = Visitors)
+
+# Summarize total visitation per park per year
+vis_vis <- visits %>% 
+  group_by(park, year) %>% 
+  summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
+
+# Merge Park Location with visitation
+locations <- locations %>% 
+  mutate(gnis_id = as.character(gnis_id))
+
+national_parks <- national_parks %>% 
+  mutate(gnis_id = as.character(gnis_id))
+
+locations_full <- locations %>% 
+  left_join(national_parks, by = "gnis_id")
+
+locations_full <- locations_full %>% 
+  rename(park = parkname)
+
+park_year_data <- locations_full %>% 
+  left_join(vis_vis, by = "park") %>% 
+  filter(!is.na(year.x)) %>% 
+  select(-metadata)
+  
+
+# Create set of available years
+years_available <- sort(as.numeric(unique(park_year_data$year.x)))
+
+```
+
+
+```{r}
+# Read in Data
 park_visits <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-17/national_parks.csv")
 
 # Keep only National Parks
@@ -50,15 +94,21 @@ park_summary <- park_visits %>%
 
 
 
-```{r}
-
-```
-
-
-
 
 Sidebar {.sidebar}
 ======================================================================
+
+
+)
+```{r Year slider}
+sliderInput("year_select", "Select Year:",
+            min = min(years_available),
+            max = max(years_available),
+            value = min(years_available),
+            step = 1,
+            sep = "")
+```
+
 
 ### **About the Data**
 
@@ -80,6 +130,8 @@ Use:
 - Tabs and rows to explore different panels in the dashboard 
 
 
+
+
 ```{r}
 # Where info and slide and drop down will be 
 ```
@@ -88,12 +140,10 @@ Use:
 Main
 ======================================================================
 
-
 Row
 -----------------------------------------------------------------------
 
-
-### Visitors by Region and Era
+### Park Visitor
 
 ```{r echo=TRUE}
 park_summary %>%
@@ -108,10 +158,48 @@ park_summary %>%
 
 ```
 
+Row 
+-----------------------------------------------------------------------
 
+### Park Visitors, State Pop and Gas Prices by year
 
-
-
+```{r}
+renderLeaflet({
+  
+  # Filter year-specific data
+  map_data <- park_year_data %>% 
+    filter(year == input$year_select) %>% 
+    left_join(state_pop %>% filter(year == input$year_select), by = "state") %>% 
+    left_join(gas %>% filter(year == input$year_select), by = "year")
+  
+  # Create color scale for population density
+  pal <- colorNumeric("YlOrRd", domain = map_data$pop_density)
+  
+  leaflet(map_data) %>% 
+    addProviderTiles("CartoDB.Positron") %>% 
+    addCircleMarkers(
+      lng = ~Longitude,
+      lat = ~Latitude,
+      radius = ~rescale(visitors, to = c(5, 20)),
+      color = ~pal(pop_density),
+      fillOpacity = 0.8,
+      stroke = FALSE, 
+      label = ~paste0(
+        "<b>", park, "</b><br>",
+        "Visitors (", year, "): ", comma(visitors), "<br>",
+        "State Pop Density: ", round(pop_density, 1 ), "<br>",
+        "Gas Price: $", formatC(gas_price, format = "f", digits = 2)
+      ) %>% lapply(htmltools::HTML),
+      popup = ~park
+    ) %>% 
+    addLegend(
+      "bottomright",
+      pal = pal, 
+      values = ~pop_density,
+      title = "Population Density"
+    )
+})
+```
 
 
 

@@ -25,47 +25,17 @@ region_summary <- park_visits %>%
   group_by(region, year_cat, unit_name) %>% 
   summarise(total_visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
 
-#park_visits %>% 
-#  table(parkname)
-
-
-#figures
-
-park_summary %>% 
-  ggplot(aes(
-    x = mean_visitors,
-    y = fct_reorder(unit_name, mean_visitors),
-    color = year_cat
-  )) +
-  geom_point(size = 2, alpha = 0.7) +
-  facet_wrap(~ region, scales = "free_y", ncol = 3) +
-  labs(
-    title = "Mean Visitors to U.S. National Parks by Region and Era",
-    x = "Mean annual visitors",
-    y = "National park",
-    color = "Time period"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    axis.text.y = element_text(size = 7),
-    strip.text = element_text(face = "bold", size = 12),
-    legend.position = "right"
-  )
-
-ggsave("park_plot.png", width = 16, height = 12, dpi = 300)
-
-
-
 #filtering 
 im_parks <- park_visits %>% 
   filter(region == "IM") %>% 
   filter(year>1999) %>% 
-  filter(year != "Total")%>% 
-  filter(unit_code =="YELL")
-
+  filter(year != "Total")
 
 im_parks %>% 
-  ggplot(aes(x=year, y= visitors))+
+  ggplot(aes(x=year, y= visitors, color = unit_name))+
   geom_point()+
-  labs()
+  labs()+
   theme_minimal()
+
+
+

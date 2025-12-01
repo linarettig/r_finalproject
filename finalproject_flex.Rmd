@@ -17,13 +17,68 @@ library(plotly)
 library(leaflet)
 library(tidyverse)
 library(sf)
+library(dplyr)
 
 # Read in Data
 
+park_visits <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-17/national_parks.csv")
+
+# Keep only National Parks
+park_visits <- park_visits %>% filter(unit_type == "National Park")
+
+# Create year categories
+park_visits <- park_visits %>%
+  mutate(
+    year_cat = case_when(
+      year <= 1950 ~ "1904–1950",
+      year <= 1980 ~ "1951–1980",
+      TRUE ~ "1981–2016"
+    ),
+    year_cat = factor(year_cat)
+  )
+
+# Create summarized dataset for Plot 1
+park_summary <- park_visits %>%
+  group_by(region, year_cat, unit_name) %>%
+  summarise(total_visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
+
 ```
+
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
 
 Sidebar {.sidebar}
 ======================================================================
+
+### **About the Data**
+
+This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016. Additional data on state populations and entrance fees are included to enable regional and temporal comparisons.
+
+### **Purpose of the Dashboard**
+
+The dashboard allows users to explore:
+- Total annual visitation trends over time  
+- Differences in visitation by U.S. region  
+- Park-level visitation trends across different eras  
+- Interactive views of individual park visitation patterns  
+
+### **How to Navigate**
+
+Use:
+- The **sidebar controls** to filter years or regions  
+- The **interactive plots** (hover to see values)  
+- Tabs and rows to explore different panels in the dashboard 
+
 
 ```{r}
 # Where info and slide and drop down will be 
@@ -33,14 +88,25 @@ Sidebar {.sidebar}
 Main
 ======================================================================
 
+
 Row
 -----------------------------------------------------------------------
 
 
-```{r}
+### Visitors by Region and Era
+
+```{r echo=TRUE}
+park_summary %>%
+  ggplot(aes(x = total_visitors, y = fct_reorder(unit_name, total_visitors), color = year_cat)) +
+  geom_point(size = 2, alpha = 0.7) + facet_wrap(~ region, scales = "free_y") +
+  labs(title = "Total Visitors to U.S. National Parks by Region and Era",
+       x = "Total Annual Visitors", y = "National Park", color = "Era") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.y = element_text(size = 6))
+
 
 ```
-
 
 
 

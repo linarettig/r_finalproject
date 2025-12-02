@@ -20,6 +20,7 @@ library(sf)
 library(dplyr)
 library(scales)
 
+
 # Read in Data
 
 locations <- read_csv("data/locations.csv")
@@ -28,37 +29,35 @@ state_pop <- read_csv("data/state_pop.csv")
 gas <- read_csv("data/gas_price.csv")
 national_parks <- read_csv("data/national_parks.csv")
 
-# Clean data
+# Clean data and merge with state populations
+vis_data_pop <- visits %>% 
+  rename(visitors = Visitors,
+         year = YearRaw,
+         state = State,
+         gnis_id = `Gnis Id`,
+         park_name_display = `Unit Name`) %>% 
+  mutate(year = as.numeric(as.character(year)),
+         gnis_id = as.character(gnis_id)) %>% 
+  group_by(gnis_id, state, year, park_name_display) %>% 
+  summarize(visitors = sum(visitors, na.rm = TRUE), .group = "drop") %>% 
+  left_join(state_pop, by = c("state" = "state", "year" = "year")) %>% 
+  rename(state_population = pop) %>% 
+  filter(!is.na(year), !is.na(state_population))
 
-visits <- visits %>%
-  rename(park = Parkname, year = Year, visitors = Visitors)
+# Merge with Location
+park_year_data <- locations %>% 
+  mutate(gnis_id = as.character(gnis_id)) %>% 
+  rename(lon = lon, lat = lat) %>% 
+  right_join(vis_data_pop, by = "gnis_id") %>% 
+  filter(!is.na(lon), !is.na(lat)) %>% 
+  select(lon, lat, state, park_name_display, year, visitors, state_population)
 
-# Summarize total visitation per park per year
-vis_vis <- visits %>% 
-  group_by(park, year) %>% 
-  summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
-
-# Merge Park Location with visitation
-locations <- locations %>% 
-  mutate(gnis_id = as.character(gnis_id))
-
-national_parks <- national_parks %>% 
-  mutate(gnis_id = as.character(gnis_id))
-
-locations_full <- locations %>% 
-  left_join(national_parks, by = "gnis_id")
-
-locations_full <- locations_full %>% 
-  rename(park = parkname)
-
-park_year_data <- locations_full %>% 
-  left_join(vis_vis, by = "park") %>% 
-  filter(!is.na(year.x)) %>% 
-  select(-metadata)
-  
 
 # Create set of available years
-years_available <- sort(as.numeric(unique(park_year_data$year.x)))
+years_available <- sort(as.numeric(unique(park_year_data$year)))
+
+# Calculate max visitation for marker scaling 
+max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
 
 ```
 
@@ -106,7 +105,8 @@ sliderInput("year_select", "Select Year:",
             max = max(years_available),
             value = min(years_available),
             step = 1,
-            sep = "")
+            sep = "",
+            animate = animationOptions(interval = 1000, loop = FALSE))
 ```
 
 
@@ -163,40 +163,48 @@ Row
 
 ### Park Visitors, State Pop and Gas Prices by year
 
-```{r}
-renderLeaflet({
-  
-  # Filter year-specific data
-  map_data <- park_year_data %>% 
+```{r Leaflet map}
+# Reactive expression to filter data based on slider input 
+filtered_data <- reactive({
+  req(input$year_select)
+  park_year_data %>% 
     filter(year == input$year_select) %>% 
-    left_join(state_pop %>% filter(year == input$year_select), by = "state") %>% 
-    left_join(gas %>% filter(year == input$year_select), by = "year")
+    distinct(lon, lat, .keep_all = TRUE)
+})
+
+# Leaflet map base layer 
+renderLeaflet({
+  leaflet() %>% 
+    addTiles() %>% 
+    setView(lng = -98.5, lat = 39.8, zoom = 3)
+})
+
+observe({
+  data_to_plot <- filtered_data()
   
-  # Create color scale for population density
-  pal <- colorNumeric("YlOrRd", domain = map_data$pop_density)
-  
-  leaflet(map_data) %>% 
-    addProviderTiles("CartoDB.Positron") %>% 
+  data_to_plot <- data_to_plot %>% 
+    mutate(
+      radius = sqrt(visitors) / sqrt(max_visitors) * 20 + 3,
+      popup_text = paste(
+        "<b>", park_name_display, "</b><br>",
+        "Year: ", year, "<br>",
+        "Visitors: ", formatC(visitors, format="f", big.mark=",", digits=0), "<br>",
+        "State: ", state, "<br>",
+        "State Population: ", formatC(state_population, format="f", big.mark=",", digits=0)
+      )
+    )
+  leafletProxy("Leafket map", data = data_to_plot) %>% 
+    clearMarkers() %>% 
     addCircleMarkers(
-      lng = ~Longitude,
-      lat = ~Latitude,
-      radius = ~rescale(visitors, to = c(5, 20)),
-      color = ~pal(pop_density),
-      fillOpacity = 0.8,
-      stroke = FALSE, 
-      label = ~paste0(
-        "<b>", park, "</b><br>",
-        "Visitors (", year, "): ", comma(visitors), "<br>",
-        "State Pop Density: ", round(pop_density, 1 ), "<br>",
-        "Gas Price: $", formatC(gas_price, format = "f", digits = 2)
-      ) %>% lapply(htmltools::HTML),
-      popup = ~park
-    ) %>% 
-    addLegend(
-      "bottomright",
-      pal = pal, 
-      values = ~pop_density,
-      title = "Population Density"
+      lng = ~lon,
+      lat = ~lat,
+      radius = ~radius,
+      fillColor = "#0072B2", 
+      color = "#000000",
+      weight = 0.5, 
+      opacity = 1, 
+      fillOpacity = 0.8, 
+      popup = ~popup_text
     )
 })
 ```

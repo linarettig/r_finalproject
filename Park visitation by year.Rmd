@@ -22,13 +22,21 @@ park_visits <- read_csv(
 park_visits <- park_visits %>% 
   filter(unit_type == "National Park") %>% 
   filter(!is.na(visitors)) %>% 
-  mutate(year_num = as.numeric(year))   # numeric year for plotting/filtering
+  mutate(year_num = as.numeric(year))   
 
-# IM region, years >= 2000 (and no "Total" rows)
+# IM region, years >= 2000 (no total rows)
 im_parks <- park_visits %>% 
   filter(region == "IM",
          !is.na(year_num),
          year_num >= 2000)
+
+#grand total
+im_total <- im_parks %>% 
+  group_by(year_num) %>% 
+  summarise(visitors = sum(visitors), .groups = "drop") %>% 
+  mutate(unit_name = "Total Visitation")
+
+im_parks <- bind_rows(im_parks, im_total)
 
 # Vector of IM park names for the dropdown
 im_park_list <- sort(unique(im_parks$unit_name))

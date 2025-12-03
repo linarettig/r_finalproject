@@ -1,13 +1,10 @@
 ---
 title: "Air Quality In National Park"
-runtime: shiny
 output:
   flexdashboard::flex_dashboard:
-    orientation: rows
-    vertical_layout: fill
     social: menu
     source_code: https://github.com/linarettig/r_finalproject
-    theme: simplex
+runtime: shiny 
 ---
 
 ```{r setup, include=FALSE}
@@ -58,6 +55,8 @@ years_available <- sort(as.numeric(unique(park_year_data$year)))
 # Calculate max visitation for marker scaling 
 max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
 
+# Ely Cleaned Data 
+
 ```
 
 
@@ -92,8 +91,13 @@ park_summary <- park_visits %>%
 
 
 
-Sidebar {.sidebar}
+All National Parks
 ======================================================================
+
+Row 
+--------------------------------------------------------------------------------
+
+### National Parks Desriptions 
 
 ```{r Year slider and Dropdown}
 sliderInput("year_select", "Select Year:",
@@ -127,15 +131,6 @@ Use:
 - The **interactive plots** (hover to see values)  
 - Tabs and rows to explore different panels in the dashboard 
 
-
-
-All National Parks 
-======================================================================
-
-Row
------------------------------------------------------------------------
-
-### Park Visitor
 
 ```{r echo=TRUE}
 park_summary %>%
@@ -204,10 +199,10 @@ observe({
 
 
 InterMountain Parks
-================================================================================
+===============================================================================
 
 Row 
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 ### Interactive Visitation Trend for Denali National Park
 
@@ -240,7 +235,5 @@ ggplotly(p)
 ```
 
 
-Air Quality in Parks 
-================================================================================
 
 

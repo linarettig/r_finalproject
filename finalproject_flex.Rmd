@@ -20,7 +20,6 @@ library(sf)
 library(dplyr)
 library(scales)
 
-
 # Read in Data
 
 locations <- read_csv("data/locations.csv")
@@ -96,9 +95,7 @@ park_summary <- park_visits %>%
 Sidebar {.sidebar}
 ======================================================================
 
-
-)
-```{r Year slider}
+```{r Year slider and Dropdown}
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),
@@ -106,6 +103,8 @@ sliderInput("year_select", "Select Year:",
             step = 1,
             sep = "",
             animate = animationOptions(interval = 1000, loop = FALSE))
+
+# Drop Down
 ```
 
 
@@ -130,13 +129,7 @@ Use:
 
 
 
-
-```{r}
-# Where info and slide and drop down will be 
-```
-
-
-Main
+All National Parks 
 ======================================================================
 
 Row
@@ -157,41 +150,7 @@ park_summary %>%
 
 ```
 
-<<<<<<< HEAD
 
-### Interactive Visitation Trend for Denali National Park
-```{r interactive_plot, echo=TRUE}
-
-library(plotly)
-unique(park_visits$unit_name)
-
-str(park_visits$year)
-
-unique(park_visits$year)
-
-demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
-
-summary(demo$year)
-
-demo <- park_visits %>% 
-  filter(str_detect(unit_name, "Denali"))
-
-p <- ggplot(demo, aes(x = year, y = visitors)) +
-     geom_line(color = "steelblue", linewidth = 1) +
-     geom_point(size = 0.7, alpha = 0.6) +
-     scale_x_continuous(breaks = seq(min(demo$year), max(demo$year), by = 10)) +
-     labs(title = "Visitation Trend: Denali National Park",
-          x = "Year",
-          y = "Visitors")
-
-ggplotly(p)
-
-```
-
-
-### Interactive Map of U.S. National Parks
-
-=======
 Row 
 -----------------------------------------------------------------------
 
@@ -242,12 +201,46 @@ observe({
     )
 })
 ```
->>>>>>> 327164a5618e51eec0ae666715c9f245c871dd63
 
-```{r parks_map, echo=FALSE}
 
-names(park_visits)
+InterMountain Parks
+================================================================================
 
-head(park_visits$geometry)
+Row 
+--------------------------------------------------------------------------------
+
+### Interactive Visitation Trend for Denali National Park
+
+```{r interactive_plot, echo=TRUE}
+
+library(plotly)
+unique(park_visits$unit_name)
+
+str(park_visits$year)
+
+unique(park_visits$year)
+
+demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
+
+summary(demo$year)
+
+demo <- park_visits %>% 
+  filter(str_detect(unit_name, "Denali"))
+
+p <- ggplot(demo, aes(x = year, y = visitors)) +
+     geom_line(color = "steelblue", linewidth = 1) +
+     geom_point(size = 0.7, alpha = 0.6) +
+     scale_x_continuous(breaks = seq(min(demo$year), max(demo$year), by = 10)) +
+     labs(title = "Visitation Trend: Denali National Park",
+          x = "Year",
+          y = "Visitors")
+
+ggplotly(p)
+
 ```
+
+
+Air Quality in Parks 
+================================================================================
+
 

@@ -108,7 +108,7 @@ Column {data-width=300}
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),
-            value = 2010,
+            value = 1929,
             step = 1,
             sep = "",
             animate = animationOptions(interval = 1000, loop = FALSE))
@@ -156,11 +156,15 @@ filtered_data <- reactive({
     distinct(lon, lat, .keep_all = TRUE)
 })
 
-# Leaflet map base layer 
-renderLeaflet({
+leafletOutput("leaflet_map")
+```
+
+
+```{r}
+output$leaflet_map <- renderLeaflet({
   leaflet() %>% 
     addTiles() %>% 
-    setView(lng = -98.5, lat = 39.8, zoom = 3)
+    setView(lng = -98.5, lat = 39.8, zoom = 4)
 })
 
 observe({
@@ -177,7 +181,7 @@ observe({
         "Avg Gas Price (Current $): $", round(gas_price, 2)
       )
     )
-  leafletProxy("Leaflet map", data = data_to_plot) %>% 
+  leafletProxy("leaflet_map", data = data_to_plot) %>% 
     clearMarkers() %>% 
     addCircleMarkers(
       lng = ~lon,
@@ -235,23 +239,6 @@ renderPlot({
 
 
 
-```{r}
-#slider for AQI 
-air <- read_csv("data/Air quality.csv")
-
-air_im <- air %>% 
-  filter(State == c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
-```
-
-
-```{r}
-#slider 
-
-
-#Air quality table 
-
-
-```
 
 
 

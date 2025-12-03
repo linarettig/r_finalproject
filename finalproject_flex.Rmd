@@ -9,6 +9,18 @@ output:
     source_code: https://github.com/linarettig/r_finalproject
     theme: simplex
 ---
+### About the Dashboard
+
+This dashboard presents data from the U.S. National Park Service, showing annual visitation counts for national parks across the United States from 1904–2016. The dataset includes park names, regions, states, geographic boundaries, and yearly visitor counts.
+
+The dashboard allows the viewer to:
+- Explore visitation trends over time  
+- Compare parks by total visitors  
+- View park locations and boundaries  
+- Interact with tables and visualizations for deeper insight  
+
+**How to use the dashboard:**  
+Use the tabs to navigate between plots and tables. Interactive components allow zooming, searching, and highlighting specific parks.
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
@@ -129,20 +141,15 @@ Use:
 - Tabs and rows to explore different panels in the dashboard 
 
 
+Page 1
+=======================================================================
 
-
-```{r}
-# Where info and slide and drop down will be 
-```
-
-
-Main
-======================================================================
-
-Row
+Row 1
 -----------------------------------------------------------------------
 
-### Park Visitor
+
+
+### Pane 1-  Park Visitor
 
 ```{r echo=TRUE}
 park_summary %>%
@@ -156,10 +163,11 @@ park_summary %>%
 
 
 ```
+Row 2
+------------------------------------------
 
-<<<<<<< HEAD
 
-### Interactive Visitation Trend for Denali National Park
+### Pane 2- Interactive Visitation Trend for Denali National Park
 ```{r interactive_plot, echo=TRUE}
 
 library(plotly)
@@ -242,7 +250,7 @@ observe({
     )
 })
 ```
->>>>>>> 327164a5618e51eec0ae666715c9f245c871dd63
+
 
 ```{r parks_map, echo=FALSE}
 

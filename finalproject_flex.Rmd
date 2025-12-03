@@ -58,6 +58,34 @@ years_available <- sort(as.numeric(unique(park_year_data$year)))
 # Calculate max visitation for marker scaling 
 max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
 
+
+park_visits <- read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2019/2019-09-17/national_parks.csv",
+  show_col_types = FALSE
+)
+
+# Keep only National Parks with non-missing visitors
+park_visits <- park_visits %>% 
+  filter(unit_type == "National Park") %>% 
+  filter(!is.na(visitors)) %>% 
+  mutate(year_num = as.numeric(year))   
+
+# IM region, years >= 2000 (no total rows)
+im_parks <- park_visits %>% 
+  filter(region == "IM",
+         !is.na(year_num))
+
+#grand total
+im_total <- im_parks %>% 
+  group_by(year_num) %>% 
+  summarise(visitors = sum(visitors), .groups = "drop") %>% 
+  mutate(unit_name = "Total Visitation")
+
+im_parks <- bind_rows(im_parks, im_total)
+
+# Vector of IM park names for the dropdown
+im_park_list <- sort(unique(im_parks$unit_name))
+
 ```
 
 
@@ -206,38 +234,43 @@ observe({
 InterMountain Parks
 ================================================================================
 
-Row 
---------------------------------------------------------------------------------
+Row {data-height=200}
+---------------------------------------
 
-### Interactive Visitation Trend for Denali National Park
-
-```{r interactive_plot, echo=TRUE}
-
-library(plotly)
-unique(park_visits$unit_name)
-
-str(park_visits$year)
-
-unique(park_visits$year)
-
-demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
-
-summary(demo$year)
-
-demo <- park_visits %>% 
-  filter(str_detect(unit_name, "Denali"))
-
-p <- ggplot(demo, aes(x = year, y = visitors)) +
-     geom_line(color = "steelblue", linewidth = 1) +
-     geom_point(size = 0.7, alpha = 0.6) +
-     scale_x_continuous(breaks = seq(min(demo$year), max(demo$year), by = 10)) +
-     labs(title = "Visitation Trend: Denali National Park",
-          x = "Year",
-          y = "Visitors")
-
-ggplotly(p)
-
+```{r}
+selectInput(
+  inputId  = "park_choice",
+  label    = "Choose a park:",
+  choices  = im_park_list,
+  selected = "Yellowstone National Park"
+)
 ```
+
+Row
+-----------------------------------------------------------------------
+
+### Visitors by year
+
+```{r}
+renderPlot({
+  req(input$park_choice)
+
+  df <- im_parks %>% 
+    filter(unit_name == input$park_choice)
+
+  ggplot(df, aes(x = year_num, y = visitors)) +
+    geom_line(linewidth = 1.2) +
+    geom_point() +
+    labs(
+      title = paste("Annual visitation –", input$park_choice),
+      x = "Year",
+      y = "Number of visitors"
+    ) +
+    theme_minimal(base_size = 14)
+})
+```
+
+
 
 
 Air Quality in Parks 

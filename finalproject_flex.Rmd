@@ -11,16 +11,59 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-
+library(flexdashboard)
 library(shiny)
 library(plotly)
 library(leaflet)
 library(tidyverse)
 library(sf)
 library(dplyr)
+library(scales)
+
 
 # Read in Data
 
+locations <- read_csv("data/locations.csv")
+visits <- read_csv("data/All National Parks Visitation 1904-2016.csv")
+state_pop <- read_csv("data/state_pop.csv")
+gas <- read_csv("data/gas_price.csv")
+national_parks <- read_csv("data/national_parks.csv")
+
+# Clean data and merge with state populations
+vis_data_pop <- visits %>% 
+  rename(visitors = Visitors,
+         year = YearRaw,
+         state = State,
+         gnis_id = `Gnis Id`,
+         park_name_display = `Unit Name`) %>% 
+  mutate(year = as.numeric(as.character(year)),
+         gnis_id = as.character(gnis_id)) %>% 
+  group_by(gnis_id, state, year, park_name_display) %>% 
+  summarize(visitors = sum(visitors, na.rm = TRUE), .group = "drop") %>% 
+  left_join(state_pop, by = c("state" = "state", "year" = "year")) %>% 
+  rename(state_population = pop) %>% 
+  filter(!is.na(year), !is.na(state_population))
+
+# Merge with Location
+park_year_data <- locations %>% 
+  mutate(gnis_id = as.character(gnis_id)) %>% 
+  rename(lon = lon, lat = lat) %>% 
+  right_join(vis_data_pop, by = "gnis_id") %>% 
+  filter(!is.na(lon), !is.na(lat)) %>% 
+  select(lon, lat, state, park_name_display, year, visitors, state_population)
+
+
+# Create set of available years
+years_available <- sort(as.numeric(unique(park_year_data$year)))
+
+# Calculate max visitation for marker scaling 
+max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
+
+```
+
+
+```{r}
+# Read in Data
 park_visits <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-17/national_parks.csv")
 
 park_visits <- park_visits %>%
@@ -54,15 +97,22 @@ park_summary <- park_visits %>%
 
 
 
-```{r}
-
-```
-
-
-
 
 Sidebar {.sidebar}
 ======================================================================
+
+
+)
+```{r Year slider}
+sliderInput("year_select", "Select Year:",
+            min = min(years_available),
+            max = max(years_available),
+            value = min(years_available),
+            step = 1,
+            sep = "",
+            animate = animationOptions(interval = 1000, loop = FALSE))
+```
+
 
 ### **About the Data**
 
@@ -84,20 +134,20 @@ Use:
 - Tabs and rows to explore different panels in the dashboard 
 
 
-```{r}
 
+
+```{r}
+# Where info and slide and drop down will be 
 ```
 
 
 Main
 ======================================================================
 
-
 Row
 -----------------------------------------------------------------------
 
-
-### Visitors by Region and Era
+### Park Visitor
 
 ```{r echo=TRUE}
 park_summary %>%
@@ -112,6 +162,7 @@ park_summary %>%
 
 ```
 
+<<<<<<< HEAD
 
 ### Interactive Visitation Trend for Denali National Park
 ```{r interactive_plot, echo=TRUE}
@@ -145,6 +196,58 @@ ggplotly(p)
 
 ### Interactive Map of U.S. National Parks
 
+=======
+Row 
+-----------------------------------------------------------------------
+
+### Park Visitors, State Pop and Gas Prices by year
+
+```{r Leaflet map}
+# Reactive expression to filter data based on slider input 
+filtered_data <- reactive({
+  req(input$year_select)
+  park_year_data %>% 
+    filter(year == input$year_select) %>% 
+    distinct(lon, lat, .keep_all = TRUE)
+})
+
+# Leaflet map base layer 
+renderLeaflet({
+  leaflet() %>% 
+    addTiles() %>% 
+    setView(lng = -98.5, lat = 39.8, zoom = 3)
+})
+
+observe({
+  data_to_plot <- filtered_data()
+  
+  data_to_plot <- data_to_plot %>% 
+    mutate(
+      radius = sqrt(visitors) / sqrt(max_visitors) * 20 + 3,
+      popup_text = paste(
+        "<b>", park_name_display, "</b><br>",
+        "Year: ", year, "<br>",
+        "Visitors: ", formatC(visitors, format="f", big.mark=",", digits=0), "<br>",
+        "State: ", state, "<br>",
+        "State Population: ", formatC(state_population, format="f", big.mark=",", digits=0)
+      )
+    )
+  leafletProxy("Leafket map", data = data_to_plot) %>% 
+    clearMarkers() %>% 
+    addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = ~radius,
+      fillColor = "#0072B2", 
+      color = "#000000",
+      weight = 0.5, 
+      opacity = 1, 
+      fillOpacity = 0.8, 
+      popup = ~popup_text
+    )
+})
+```
+>>>>>>> 327164a5618e51eec0ae666715c9f245c871dd63
 
 ```{r parks_map, echo=FALSE}
 

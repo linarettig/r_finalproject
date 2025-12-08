@@ -229,7 +229,7 @@ renderPlot({
 air <- read_csv("data/Air quality.csv")
 
 air_im <- air %>% 
-  filter(State == c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
+  filter(State %in% c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
 ```
 
 

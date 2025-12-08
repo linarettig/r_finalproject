@@ -1,26 +1,11 @@
 ---
 title: "Air Quality In National Park"
-runtime: shiny
 output:
   flexdashboard::flex_dashboard:
-    orientation: rows
-    vertical_layout: fill
     social: menu
     source_code: https://github.com/linarettig/r_finalproject
-    theme: simplex
+runtime: shiny 
 ---
-### About the Dashboard
-
-This dashboard presents data from the U.S. National Park Service, showing annual visitation counts for national parks across the United States from 1904–2016. The dataset includes park names, regions, states, geographic boundaries, and yearly visitor counts.
-
-The dashboard allows the viewer to:
-- Explore visitation trends over time  
-- Compare parks by total visitors  
-- View park locations and boundaries  
-- Interact with tables and visualizations for deeper insight  
-
-**How to use the dashboard:**  
-Use the tabs to navigate between plots and tables. Interactive components allow zooming, searching, and highlighting specific parks.
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
@@ -42,83 +27,98 @@ gas <- read_csv("data/gas_price.csv")
 national_parks <- read_csv("data/national_parks.csv")
 
 # Clean data and merge with state populations
-vis_data_pop <- visits %>% 
+visits_clean <- visits %>% 
   rename(visitors = Visitors,
          year = YearRaw,
          state = State,
          gnis_id = `Gnis Id`,
-         park_name_display = `Unit Name`) %>% 
+         park_name = `Unit Name`) %>% 
   mutate(year = as.numeric(as.character(year)),
          gnis_id = as.character(gnis_id)) %>% 
-  group_by(gnis_id, state, year, park_name_display) %>% 
-  summarize(visitors = sum(visitors, na.rm = TRUE), .group = "drop") %>% 
+  group_by(gnis_id, state, year, park_name) %>% 
+  summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop") %>% 
+  filter(!is.na(gnis_id), !is.na(year))
+
+park_data <- visits_clean %>% 
+  left_join(gas, by = "year") %>% 
+  rename(gas_price = gas_current) %>% 
+  select(-gas_constant)
+  
+park_data <- park_data %>% 
   left_join(state_pop, by = c("state" = "state", "year" = "year")) %>% 
-  rename(state_population = pop) %>% 
-  filter(!is.na(year), !is.na(state_population))
+  rename(state_population = pop)
 
-# Merge with Location
-park_year_data <- locations %>% 
-  mutate(gnis_id = as.character(gnis_id)) %>% 
-  rename(lon = lon, lat = lat) %>% 
-  right_join(vis_data_pop, by = "gnis_id") %>% 
-  filter(!is.na(lon), !is.na(lat)) %>% 
-  select(lon, lat, state, park_name_display, year, visitors, state_population)
+locations_clean <- locations %>% 
+  mutate(gnis_id = as.character(gnis_id))
+
+park_data <- locations_clean %>% 
+  right_join(park_data, by = "gnis_id") %>% 
+  filter(!is.na(lon),
+         !is.na(lat),
+         !is.na(state_population),
+         !is.na(gas_price)) %>% 
+  mutate(lon = as.numeric(lon), lat = as.numeric(lat)) %>% 
+  select(lon, lat, park_name, state, year, visitors, state_population, gas_price)
+
+years_available <- sort(as.numeric(unique(park_data$year)))
+max_visitors <- max(park_data$visitors, na.rm = TRUE)
 
 
-# Create set of available years
-years_available <- sort(as.numeric(unique(park_year_data$year)))
+# Ely Cleaned
 
-# Calculate max visitation for marker scaling 
-max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
+park_visits <- read_csv(
+  "https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2019/2019-09-17/national_parks.csv",
+  show_col_types = FALSE
+)
+
+# Keep only National Parks with non-missing visitors
+park_visits <- park_visits %>% 
+  filter(unit_type == "National Park") %>% 
+  filter(!is.na(visitors)) %>% 
+  mutate(year_num = as.numeric(year))   
+
+# IM region, years >= 2000 (no total rows)
+im_parks <- park_visits %>% 
+  filter(region == "IM",
+         !is.na(year_num))
+
+#grand total
+im_total <- im_parks %>% 
+  group_by(year_num) %>% 
+  summarise(visitors = sum(visitors), .groups = "drop") %>% 
+  mutate(unit_name = "Total Visitation")
+
+im_parks <- bind_rows(im_parks, im_total)
+
+# Vector of IM park names for the dropdown
+im_park_list <- sort(unique(im_parks$unit_name))
 
 ```
 
 
-```{r}
-# Read in Data
-park_visits <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-17/national_parks.csv")
 
-park_visits <- park_visits %>%
-  filter(year != "Total") %>%        # remove the bad row
-  mutate(year = as.numeric(year))    # convert clean years to numeric
-
-# Keep only National Parks
-park_visits <- park_visits %>% filter(unit_type == "National Park")
-
-# Create year categories
-park_visits <- park_visits %>%
-  mutate(
-    year_cat = case_when(
-      year <= 1950 ~ "1904–1950",
-      year <= 1980 ~ "1951–1980",
-      TRUE ~ "1981–2016"
-    ),
-    year_cat = factor(year_cat)
-  )
-
-# Create summarized dataset for Plot 1
-park_summary <- park_visits %>%
-  group_by(region, year_cat, unit_name) %>%
-  summarise(total_visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
-
-```
-
-
-
-Sidebar {.sidebar}
+All National Parks
 ======================================================================
 
 
-)
-```{r Year slider}
+### National Parks Desriptions 
+
+```{r Year slider and Dropdown}
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),
-            value = min(years_available),
+            value = 1929,
             step = 1,
             sep = "",
             animate = animationOptions(interval = 1000, loop = FALSE))
 ```
+
+```{r}
+renderText({
+  paste("Rows of filtered data for year", input$year_select, ":", nrow(filtered_data()))
+})
+```
+
 
 
 ### **About the Data**
@@ -140,12 +140,6 @@ Use:
 - The **interactive plots** (hover to see values)  
 - Tabs and rows to explore different panels in the dashboard 
 
-
-Page 1
-=======================================================================
-
-Row 1
------------------------------------------------------------------------
 
 
 
@@ -197,6 +191,9 @@ ggplotly(p)
 ```
 
 Row 
+=======
+Column {data-width=700}
+
 -----------------------------------------------------------------------
 
 ### Pane 3- Park Visitors, State Pop and Gas Prices by year
@@ -205,16 +202,20 @@ Row
 # Reactive expression to filter data based on slider input 
 filtered_data <- reactive({
   req(input$year_select)
-  park_year_data %>% 
+  park_data %>% 
     filter(year == input$year_select) %>% 
     distinct(lon, lat, .keep_all = TRUE)
 })
 
-# Leaflet map base layer 
-renderLeaflet({
+leafletOutput("leaflet_map")
+```
+
+
+```{r}
+output$leaflet_map <- renderLeaflet({
   leaflet() %>% 
     addTiles() %>% 
-    setView(lng = -98.5, lat = 39.8, zoom = 3)
+    setView(lng = -98.5, lat = 39.8, zoom = 4)
 })
 
 observe({
@@ -223,35 +224,92 @@ observe({
   data_to_plot <- data_to_plot %>% 
     mutate(
       radius = sqrt(visitors) / sqrt(max_visitors) * 20 + 3,
-      popup_text = paste(
-        "<b>", park_name_display, "</b><br>",
+      popup_html = paste(
+        "<b>", park_name, "</b> (", state, ")", "<br>",
         "Year: ", year, "<br>",
         "Visitors: ", formatC(visitors, format="f", big.mark=",", digits=0), "<br>",
-        "State: ", state, "<br>",
-        "State Population: ", formatC(state_population, format="f", big.mark=",", digits=0)
+        "State Pop: ", formatC(state_population, format="f", big.mark=",", digits=0), "<br>",
+        "Avg Gas Price (Current $): $", round(gas_price, 2)
       )
     )
-  leafletProxy("Leafket map", data = data_to_plot) %>% 
+  leafletProxy("leaflet_map", data = data_to_plot) %>% 
     clearMarkers() %>% 
     addCircleMarkers(
       lng = ~lon,
       lat = ~lat,
       radius = ~radius,
-      fillColor = "#0072B2", 
+      fillColor = "#1f78b4", 
       color = "#000000",
       weight = 0.5, 
       opacity = 1, 
       fillOpacity = 0.8, 
-      popup = ~popup_text
+      popup = ~popup_html
     )
 })
 ```
 
 
-```{r parks_map, echo=FALSE}
 
-names(park_visits)
 
-head(park_visits$geometry)
+
+
+InterMountain Region 
+================================================================================
+
+Row 
+-------------------------------------------------------------------------------
+
+### Visitors by year
+
+```{r}
+selectInput(
+  inputId  = "park_choice",
+  label    = "Choose a park:",
+  choices  = im_park_list,
+  selected = "Yellowstone National Park"
+)
+```
+
+### Visitors by year
+
+```{r}
+renderPlot({
+  req(input$park_choice)
+
+  df <- im_parks %>% 
+    filter(unit_name == input$park_choice)
+
+  ggplot(df, aes(x = year_num, y = visitors)) +
+    geom_line(linewidth = 1.2) +
+    geom_point() +
+    labs(
+      title = paste("Annual visitation –", input$park_choice),
+      x = "Year",
+      y = "Number of visitors"
+    ) +
+    theme_minimal(base_size = 14)
+})
+```
+
+## AirQuality Starts HERE - Eliud
+
+
+
+```{r}
+#slider for AQI 
+air <- read_csv("data/Air quality.csv")
+
+air_im <- air %>% 
+  filter(State %in% c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
+```
+
+
+```{r}
+#slider 
+
+
+#Air quality table 
+
+
 ```
 

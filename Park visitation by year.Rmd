@@ -27,8 +27,7 @@ park_visits <- park_visits %>%
 # IM region, years >= 2000 (no total rows)
 im_parks <- park_visits %>% 
   filter(region == "IM",
-         !is.na(year_num),
-         year_num >= 2000)
+         !is.na(year_num))
 
 #grand total
 im_total <- im_parks %>% 

@@ -26,35 +26,41 @@ gas <- read_csv("data/gas_price.csv")
 national_parks <- read_csv("data/national_parks.csv")
 
 # Clean data and merge with state populations
-vis_data_pop <- visits %>% 
+visits_clean <- visits %>% 
   rename(visitors = Visitors,
          year = YearRaw,
          state = State,
          gnis_id = `Gnis Id`,
-         park_name_display = `Unit Name`) %>% 
+         park_name = `Unit Name`) %>% 
   mutate(year = as.numeric(as.character(year)),
          gnis_id = as.character(gnis_id)) %>% 
-  group_by(gnis_id, state, year, park_name_display) %>% 
-  summarize(visitors = sum(visitors, na.rm = TRUE), .group = "drop") %>% 
+  group_by(gnis_id, state, year, park_name) %>% 
+  summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop") %>% 
+  filter(!is.na(gnis_id), !is.na(year))
+
+park_data <- visits_clean %>% 
+  left_join(gas, by = "year") %>% 
+  rename(gas_price = gas_current) %>% 
+  select(-gas_constant)
+  
+park_data <- park_data %>% 
   left_join(state_pop, by = c("state" = "state", "year" = "year")) %>% 
-  rename(state_population = pop) %>% 
-  filter(!is.na(year), !is.na(state_population))
+  rename(state_population = pop)
 
-# Merge with Location
-park_year_data <- locations %>% 
-  mutate(gnis_id = as.character(gnis_id)) %>% 
-  rename(lon = lon, lat = lat) %>% 
-  right_join(vis_data_pop, by = "gnis_id") %>% 
-  filter(!is.na(lon), !is.na(lat)) %>% 
-  select(lon, lat, state, park_name_display, year, visitors, state_population)
+locations_clean <- locations %>% 
+  mutate(gnis_id = as.character(gnis_id))
 
+park_data <- locations_clean %>% 
+  right_join(park_data, by = "gnis_id") %>% 
+  filter(!is.na(lon),
+         !is.na(lat),
+         !is.na(state_population),
+         !is.na(gas_price)) %>% 
+  mutate(lon = as.numeric(lon), lat = as.numeric(lat)) %>% 
+  select(lon, lat, park_name, state, year, visitors, state_population, gas_price)
 
-# Create set of available years
-years_available <- sort(as.numeric(unique(park_year_data$year)))
-
-# Calculate max visitation for marker scaling 
-max_visitors <- max(park_year_data$visitors, na.rm = TRUE)
-
+years_available <- sort(as.numeric(unique(park_data$year)))
+max_visitors <- max(park_data$visitors, na.rm = TRUE)
 
 
 # Ely Cleaned
@@ -93,7 +99,7 @@ im_park_list <- sort(unique(im_parks$unit_name))
 All National Parks
 ======================================================================
 
-Row 
+Column {data-width=300}
 --------------------------------------------------------------------------------
 
 ### National Parks Desriptions 
@@ -102,13 +108,18 @@ Row
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),
-            value = min(years_available),
+            value = 1929,
             step = 1,
             sep = "",
             animate = animationOptions(interval = 1000, loop = FALSE))
-
-# Drop Down
 ```
+
+```{r}
+renderText({
+  paste("Rows of filtered data for year", input$year_select, ":", nrow(filtered_data()))
+})
+```
+
 
 
 ### **About the Data**
@@ -131,7 +142,7 @@ Use:
 - Tabs and rows to explore different panels in the dashboard 
 
 
-Row 
+Column {data-width=700}
 -----------------------------------------------------------------------
 
 ### Park Visitors, State Pop and Gas Prices by year
@@ -140,16 +151,20 @@ Row
 # Reactive expression to filter data based on slider input 
 filtered_data <- reactive({
   req(input$year_select)
-  park_year_data %>% 
+  park_data %>% 
     filter(year == input$year_select) %>% 
     distinct(lon, lat, .keep_all = TRUE)
 })
 
-# Leaflet map base layer 
-renderLeaflet({
+leafletOutput("leaflet_map")
+```
+
+
+```{r}
+output$leaflet_map <- renderLeaflet({
   leaflet() %>% 
     addTiles() %>% 
-    setView(lng = -98.5, lat = 39.8, zoom = 3)
+    setView(lng = -98.5, lat = 39.8, zoom = 4)
 })
 
 observe({
@@ -158,26 +173,26 @@ observe({
   data_to_plot <- data_to_plot %>% 
     mutate(
       radius = sqrt(visitors) / sqrt(max_visitors) * 20 + 3,
-      popup_text = paste(
-        "<b>", park_name_display, "</b><br>",
+      popup_html = paste(
+        "<b>", park_name, "</b> (", state, ")", "<br>",
         "Year: ", year, "<br>",
         "Visitors: ", formatC(visitors, format="f", big.mark=",", digits=0), "<br>",
-        "State: ", state, "<br>",
-        "State Population: ", formatC(state_population, format="f", big.mark=",", digits=0)
+        "State Pop: ", formatC(state_population, format="f", big.mark=",", digits=0), "<br>",
+        "Avg Gas Price (Current $): $", round(gas_price, 2)
       )
     )
-  leafletProxy("Leafket map", data = data_to_plot) %>% 
+  leafletProxy("leaflet_map", data = data_to_plot) %>% 
     clearMarkers() %>% 
     addCircleMarkers(
       lng = ~lon,
       lat = ~lat,
       radius = ~radius,
-      fillColor = "#0072B2", 
+      fillColor = "#1f78b4", 
       color = "#000000",
       weight = 0.5, 
       opacity = 1, 
       fillOpacity = 0.8, 
-      popup = ~popup_text
+      popup = ~popup_html
     )
 })
 ```
@@ -224,6 +239,7 @@ renderPlot({
 
 
 
+<<<<<<< HEAD
 ```{r}
 #slider for AQI 
 air <- read_csv("data/Air quality.csv")
@@ -241,6 +257,8 @@ air_im <- air %>%
 
 
 ```
+=======
+>>>>>>> 053e60d63e3ac81a3094cef1781c5da06621207c
 
 
 

@@ -237,8 +237,29 @@ renderPlot({
 })
 ```
 
+## AirQuality Starts HERE - Eliud
 
 
+<<<<<<< HEAD
+```{r}
+#slider for AQI 
+air <- read_csv("data/Air quality.csv")
+
+air_im <- air %>% 
+  filter(State %in% c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
+```
+
+
+```{r}
+#slider 
+
+
+#Air quality table 
+
+
+```
+=======
+>>>>>>> 053e60d63e3ac81a3094cef1781c5da06621207c
 
 
 

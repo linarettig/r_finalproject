@@ -268,11 +268,7 @@ selectInput(
   choices  = im_park_list,
   selected = "Yellowstone National Park"
 )
-```
 
-### Visitors by year
-
-```{r}
 renderPlot({
   req(input$park_choice)
 

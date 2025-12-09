@@ -96,10 +96,11 @@ im_park_list <- sort(unique(im_parks$unit_name))
 ```
 
 
-
 All National Parks
 ======================================================================
 
+Column {data-width=300}
+----------------------------------------------------------------------
 
 ### National Parks Desriptions 
 
@@ -118,8 +119,6 @@ renderText({
   paste("Rows of filtered data for year", input$year_select, ":", nrow(filtered_data()))
 })
 ```
-
-
 
 ### **About the Data**
 
@@ -141,53 +140,12 @@ Use:
 - Tabs and rows to explore different panels in the dashboard 
 
 
-
-
-### Pane 1-  Park Visitor
-
-
-Row 2
-------------------------------------------
-
-
-### Pane 2- Interactive Visitation Trend for Denali National Park
-```{r interactive_plot, echo=TRUE}
-
-library(plotly)
-unique(park_visits$unit_name)
-
-str(park_visits$year)
-
-unique(park_visits$year)
-
-demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
-
-summary(demo$year)
-
-demo <- park_visits %>% 
-  filter(str_detect(unit_name, "Denali"))
-
-p <- ggplot(demo, aes(x = year, y = visitors)) +
-     geom_line(color = "steelblue", linewidth = 1) +
-     geom_point(size = 0.7, alpha = 0.6) +
-     scale_x_continuous(breaks = seq(min(demo$year), max(demo$year), by = 10)) +
-     labs(title = "Visitation Trend: Denali National Park",
-          x = "Year",
-          y = "Visitors")
-
-ggplotly(p)
-
-```
-
-Row 
-=======
 Column {data-width=700}
-
 -----------------------------------------------------------------------
 
-### Pane 3- Park Visitors, State Pop and Gas Prices by year
+### Park Visitors, State Pop and Gas Prices by year
 
-```{r pane3_leaflet, echo=TRUE}
+```{r}
 # Reactive expression to filter data based on slider input 
 filtered_data <- reactive({
   req(input$year_select)
@@ -200,7 +158,7 @@ leafletOutput("leaflet_map")
 ```
 
 
-```{r}
+```{r leaflet}
 output$leaflet_map <- renderLeaflet({
   leaflet() %>% 
     addTiles() %>% 
@@ -209,6 +167,8 @@ output$leaflet_map <- renderLeaflet({
 
 observe({
   data_to_plot <- filtered_data()
+  
+  req(nrow(data_to_plot) > 0)
   
   data_to_plot <- data_to_plot %>% 
     mutate(
@@ -236,10 +196,6 @@ observe({
     )
 })
 ```
-
-
-
-
 
 
 InterMountain Region 
@@ -276,13 +232,14 @@ renderPlot({
 })
 ```
 
+
+Row
+------------------------
+
+### National Park Air Quaility Data
 ## AirQuality Starts HERE - Eliud
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 43f322a79934d9837d3c146d0ff10eb09b3ef4f2
 ```{r}
 #slider for AQI 
 air <- read_csv("data/Air quality.csv")
@@ -300,10 +257,38 @@ air_im <- air %>%
 
 
 ```
-<<<<<<< HEAD
 
 
 
-=======
->>>>>>> 43f322a79934d9837d3c146d0ff10eb09b3ef4f2
+Denali 
+===============================================================================
 
+
+### Pane 2- Interactive Visitation Trend for Denali National Park
+```{r interactive_plot, eval=FALSE, include=FALSE}
+
+library(plotly)
+unique(park_visits$unit_name)
+
+str(park_visits$year)
+
+unique(park_visits$year)
+
+demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
+
+summary(demo$year)
+
+demo <- park_visits %>% 
+  filter(str_detect(unit_name, "Denali"))
+
+p <- ggplot(demo, aes(x = year, y = visitors)) +
+     geom_line(color = "steelblue", linewidth = 1) +
+     geom_point(size = 0.7, alpha = 0.6) +
+     scale_x_continuous(breaks = seq(min(demo$year), max(demo$year), by = 10)) +
+     labs(title = "Visitation Trend: Denali National Park",
+          x = "Year",
+          y = "Visitors")
+
+ggplotly(p)
+
+```

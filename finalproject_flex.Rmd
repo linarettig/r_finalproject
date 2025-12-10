@@ -500,7 +500,7 @@ Denali
 
 
 ### Pane 2- Interactive Visitation Trend for Denali National Park
-```{r interactive_plot, eval=FALSE, include=FALSE}
+```{r interactive_plot}
 
 library(plotly)
 unique(park_visits$unit_name)

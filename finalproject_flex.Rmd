@@ -257,6 +257,7 @@ air_im <- air %>%
     state = State,
     counties_reporting = `Cnty_Rpt`,
     raw_median_aqi = `Median AQI`,  # This is actually a SUM across counties
+    raw_nthp = `90th Percentile AQI`,
     good_days = `Good Days`,
     moderate_days = `Moderate Days`,
     unhealthy_days = `Unhealthy Days`,
@@ -266,6 +267,7 @@ air_im <- air %>%
   # Calculate the actual average median AQI across counties
   mutate(
     median_aqi = round(raw_median_aqi / counties_reporting, 1),
+    nthp = round(raw_nthp / counties_reporting, 1), 
     # EPA AQI categorization based on corrected Median AQI
     aqi_category = case_when(
       median_aqi <= 50  ~ "Good",
@@ -397,7 +399,7 @@ parks_aqi_data <- reactive({
   
   aqi_year <- air_im %>% 
     filter(year == input$aqi_year) %>%
-    select(state, median_aqi, aqi_category, aqi_color, 
+    select(state, median_aqi, nthp, aqi_category, aqi_color, 
            good_days, unhealthy_days, hazardous_days, counties_reporting)
   
   parks_im_coords %>%
@@ -430,6 +432,7 @@ observe({
         "<b>", unit_name, "</b><br>",
         "State: ", state_full, "<br>",
         "Avg Median AQI: ", median_aqi, "<br>",
+        "Avg 90th Percentile AQI: ", nthp, "<br>",
         "Category: <span style='color:", aqi_color, ";font-weight:bold;'>", aqi_category, "</span><br>",
         "<small>(Based on ", counties_reporting, " reporting counties)</small>"
       )
@@ -483,6 +486,7 @@ renderTable({
     transmute(
       State = state,
       `Median AQI` = median_aqi,  # Now correctly calculated!
+      `90th Percentile` = nthp,
       `Category` = aqi_category,
       `Counties Reporting` = counties_reporting,
       `Good Days` = formatC(good_days, big.mark = ","),

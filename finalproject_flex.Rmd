@@ -104,7 +104,7 @@ Column {data-width=350}
 
 ### National Parks Desriptions 
 
-```{r Year slider and Dropdown}
+```{r Year slider}
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),

@@ -519,6 +519,7 @@ p <- ggplot(demo, aes(x = year, y = visitors)) +
      scale_x_continuous(breaks = seq(min(demo_year, na.rm = TRUE), 
                                      max(demo_year, na.rm = TRUE), 
                                      by = 10)) +
+     scale_y_continuous(limits = c(0, 200000)) + 
      labs(title = "Visitation Trend: Denali National Park",
           x = "Year",
           y = "Visitors")

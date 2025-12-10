@@ -501,8 +501,6 @@ renderTable({
 ===============================================================================
 
 
-
-
 ### Interactive Visitation Trend for Denali National Park
 
 ```{r interactive_plot, warning = FALSE}

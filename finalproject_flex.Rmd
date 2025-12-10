@@ -281,7 +281,6 @@ air_im <- air %>%
     )
   )
 
-# ===== FIX #2: Use the SAME park source as teammate (TidyTuesday) =====
 # Filter to IM region National Parks only, matching teammate's im_parks
 parks_im_coords <- park_visits %>%
   filter(region == "IM", unit_type == "National Park") %>%

@@ -233,32 +233,267 @@ renderPlot({
 ```
 
 
-Row
 ------------------------
 
-### National Park Air Quaility Data
-## AirQuality Starts HERE - Eliud
 
-
-```{r}
-#slider for AQI 
+```{r aqi_data_setup}
+# Load and prepare air quality data
 air <- read_csv("data/Air quality.csv")
 
-air_im <- air %>% 
-  filter(State %in% c("Montana", "Wyoming", "Utah", "Colorado","Arizona", "New Mexico", "Texas", "Oklahoma"))
+# Intermountain region states
+im_states <- c("Montana", "Wyoming", "Utah", "Colorado",
+               "Arizona", "New Mexico", "Texas", "Oklahoma")
+
+# State abbreviation mapping
+state_map <- c("MT" = "Montana", "WY" = "Wyoming", "UT" = "Utah", 
+               "CO" = "Colorado", "AZ" = "Arizona", "NM" = "New Mexico",
+               "TX" = "Texas", "OK" = "Oklahoma")
+
+# Calculate ACTUAL median AQI by dividing by reporting counties
+air_im <- air %>%
+  filter(State %in% im_states) %>%
+  rename(
+    year = Year,
+    state = State,
+    counties_reporting = `Cnty_Rpt`,
+    raw_median_aqi = `Median AQI`,  # This is actually a SUM across counties
+    good_days = `Good Days`,
+    moderate_days = `Moderate Days`,
+    unhealthy_days = `Unhealthy Days`,
+    hazardous_days = `Hazardous Days`
+  ) %>%
+  filter(!is.na(raw_median_aqi), counties_reporting > 0) %>%
+  # Calculate the actual average median AQI across counties
+  mutate(
+    median_aqi = round(raw_median_aqi / counties_reporting, 1),
+    # EPA AQI categorization based on corrected Median AQI
+    aqi_category = case_when(
+      median_aqi <= 50  ~ "Good",
+      median_aqi <= 100 ~ "Moderate",
+      median_aqi <= 150 ~ "Unhealthy (Sensitive)",
+      TRUE ~ "Unhealthy"
+    ),
+    aqi_color = case_when(
+      aqi_category == "Good" ~ "#00E400",
+      aqi_category == "Moderate" ~ "#FFFF00",
+      aqi_category == "Unhealthy (Sensitive)" ~ "#FF7E00",
+      TRUE ~ "#FF0000"
+    )
+  )
+
+# ===== FIX #2: Use the SAME park source as teammate (TidyTuesday) =====
+# Filter to IM region National Parks only, matching teammate's im_parks
+parks_im_coords <- park_visits %>%
+  filter(region == "IM", unit_type == "National Park") %>%
+  distinct(unit_name) %>%
+  # Add coordinates - using a manual lookup for major IM National Parks
+  # This ensures consistency and correct locations
+  mutate(
+    lon = case_when(
+      unit_name == "Yellowstone National Park" ~ -110.5885,
+      unit_name == "Grand Teton National Park" ~ -110.6818,
+      unit_name == "Rocky Mountain National Park" ~ -105.6836,
+      unit_name == "Mesa Verde National Park" ~ -108.4618,
+      unit_name == "Black Canyon of the Gunnison National Park" ~ -107.7416,
+      unit_name == "Great Sand Dunes National Park" ~ -105.5943,
+      unit_name == "Arches National Park" ~ -109.5925,
+      unit_name == "Bryce Canyon National Park" ~ -112.1871,
+      unit_name == "Canyonlands National Park" ~ -109.8782,
+      unit_name == "Capitol Reef National Park" ~ -111.2615,
+      unit_name == "Zion National Park" ~ -113.0263,
+      unit_name == "Grand Canyon National Park" ~ -112.1401,
+      unit_name == "Petrified Forest National Park" ~ -109.7890,
+      unit_name == "Saguaro National Park" ~ -110.7574,
+      unit_name == "Carlsbad Caverns National Park" ~ -104.5567,
+      unit_name == "Big Bend National Park" ~ -103.2502,
+      unit_name == "Guadalupe Mountains National Park" ~ -104.8606,
+      unit_name == "Glacier National Park" ~ -113.7870,
+      TRUE ~ NA_real_
+    ),
+    lat = case_when(
+      unit_name == "Yellowstone National Park" ~ 44.4280,
+      unit_name == "Grand Teton National Park" ~ 43.7904,
+      unit_name == "Rocky Mountain National Park" ~ 40.3428,
+      unit_name == "Mesa Verde National Park" ~ 37.2309,
+      unit_name == "Black Canyon of the Gunnison National Park" ~ 38.5754,
+      unit_name == "Great Sand Dunes National Park" ~ 37.7916,
+      unit_name == "Arches National Park" ~ 38.7331,
+      unit_name == "Bryce Canyon National Park" ~ 37.5930,
+      unit_name == "Canyonlands National Park" ~ 38.3269,
+      unit_name == "Capitol Reef National Park" ~ 38.0877,
+      unit_name == "Zion National Park" ~ 37.2982,
+      unit_name == "Grand Canyon National Park" ~ 36.0544,
+      unit_name == "Petrified Forest National Park" ~ 34.9100,
+      unit_name == "Saguaro National Park" ~ 32.2967,
+      unit_name == "Carlsbad Caverns National Park" ~ 32.1479,
+      unit_name == "Big Bend National Park" ~ 29.2500,
+      unit_name == "Guadalupe Mountains National Park" ~ 31.8913,
+      unit_name == "Glacier National Park" ~ 48.7596,
+      TRUE ~ NA_real_
+    ),
+    state_full = case_when(
+      unit_name %in% c("Yellowstone National Park", "Grand Teton National Park") ~ "Wyoming",
+      unit_name %in% c("Rocky Mountain National Park", "Mesa Verde National Park", 
+                       "Black Canyon of the Gunnison National Park", "Great Sand Dunes National Park") ~ "Colorado",
+      unit_name %in% c("Arches National Park", "Bryce Canyon National Park", "Canyonlands National Park",
+                       "Capitol Reef National Park", "Zion National Park") ~ "Utah",
+      unit_name %in% c("Grand Canyon National Park", "Petrified Forest National Park", 
+                       "Saguaro National Park") ~ "Arizona",
+      unit_name == "Carlsbad Caverns National Park" ~ "New Mexico",
+      unit_name %in% c("Big Bend National Park", "Guadalupe Mountains National Park") ~ "Texas",
+      unit_name == "Glacier National Park" ~ "Montana",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(lon), !is.na(lat))
+
+# Years for slider
+aqi_years <- sort(unique(air_im$year))
 ```
 
+Column {.sidebar data-width=250}
+-----------------------------------------------------------------------
 
-```{r}
-#slider 
+### Controls
 
-
-#Air quality table 
-
-
+```{r aqi_slider}
+sliderInput("aqi_year", "Select Year:",
+            min = min(aqi_years),
+            max = max(aqi_years),
+            value = 2015,
+            step = 1,
+            sep = "",
+            animate = animationOptions(interval = 1200, loop = FALSE))
 ```
 
+### EPA AQI Categories
 
+**About the Data**    
+This section uses EPA Air Quality Index (AQI) data aggregated at the state level, combined with the TidyTuesday National Parks dataset. AQI values are averaged across all reporting counties per state and categorized using EPA standards: Good (0–50), Moderate (51–100), Unhealthy for Sensitive Groups (101–150), and Unhealthy (151+).
+
+**Purpose of the Section**     
+This panel allows users to explore:     
+
+Air quality conditions at Intermountain Region National Parks over time
+State-level AQI trends and how they relate to park visitation
+Which parks may experience poorer air quality in a given year
+
+**How to Navigate**    
+Use:
+
+- The year slider to view AQI conditions for a specific year.
+- Plot showing visits per year.
+- The interactive map (click markers for park details).    
+- The summary table to compare AQI and visitation across states.    
+
+Column {data-width=750}
+-----------------------------------------------------------------------
+
+### Park Air Quality Map
+
+```{r aqi_map}
+# Reactive: filter AQI and join with parks
+parks_aqi_data <- reactive({
+  req(input$aqi_year)
+  
+  aqi_year <- air_im %>% 
+    filter(year == input$aqi_year) %>%
+    select(state, median_aqi, aqi_category, aqi_color, 
+           good_days, unhealthy_days, hazardous_days, counties_reporting)
+  
+  parks_im_coords %>%
+    left_join(aqi_year, by = c("state_full" = "state")) %>%
+    filter(!is.na(aqi_category))
+})
+
+# Render map
+leafletOutput("aqi_leaflet")
+
+output$aqi_leaflet <- renderLeaflet({
+  leaflet() %>%
+    addTiles() %>%
+    setView(lng = -108, lat = 39, zoom = 5) %>%
+    addLegend(
+      position = "bottomright",
+      colors = c("#00E400", "#FFFF00", "#FF7E00", "#FF0000"),
+      labels = c("Good", "Moderate", "Unhealthy (Sensitive)", "Unhealthy"),
+      title = "AQI Category"
+    )
+})
+
+observe({
+  df <- parks_aqi_data()
+  if (nrow(df) == 0) return()
+  
+  df <- df %>%
+    mutate(
+      popup_html = paste0(
+        "<b>", unit_name, "</b><br>",
+        "State: ", state_full, "<br>",
+        "Avg Median AQI: ", median_aqi, "<br>",
+        "Category: <span style='color:", aqi_color, ";font-weight:bold;'>", aqi_category, "</span><br>",
+        "<small>(Based on ", counties_reporting, " reporting counties)</small>"
+      )
+    )
+  
+  leafletProxy("aqi_leaflet", data = df) %>%
+    clearMarkers() %>%
+    addCircleMarkers(
+      lng = ~lon, lat = ~lat,
+      radius = 10,
+      fillColor = ~aqi_color,
+      color = "#333",
+      weight = 1.5,
+      fillOpacity = 0.85,
+      popup = ~popup_html,
+      label = ~paste(unit_name, "-", aqi_category)
+    )
+})
+```
+
+### Air Quality Summary by State
+
+```{r aqi_table}
+renderTable({
+  req(input$aqi_year)
+  
+  # Get visitors for the year from TidyTuesday data (matching teammate's source)
+  visitors <- im_parks %>%
+    filter(year_num == input$aqi_year, unit_name != "Total Visitation") %>%
+    mutate(state_full = case_when(
+      unit_name %in% c("Yellowstone National Park", "Grand Teton National Park") ~ "Wyoming",
+      unit_name %in% c("Rocky Mountain National Park", "Mesa Verde National Park", 
+                       "Black Canyon of the Gunnison National Park", "Great Sand Dunes National Park") ~ "Colorado",
+      unit_name %in% c("Arches National Park", "Bryce Canyon National Park", "Canyonlands National Park",
+                       "Capitol Reef National Park", "Zion National Park") ~ "Utah",
+      unit_name %in% c("Grand Canyon National Park", "Petrified Forest National Park", 
+                       "Saguaro National Park") ~ "Arizona",
+      unit_name == "Carlsbad Caverns National Park" ~ "New Mexico",
+      unit_name %in% c("Big Bend National Park", "Guadalupe Mountains National Park") ~ "Texas",
+      unit_name == "Glacier National Park" ~ "Montana",
+      TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(state_full)) %>%
+    group_by(state_full) %>%
+    summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
+  
+  # Build table with CORRECTED median AQI values
+  air_im %>%
+    filter(year == input$aqi_year) %>%
+    left_join(visitors, by = c("state" = "state_full")) %>%
+    transmute(
+      State = state,
+      `Median AQI` = median_aqi,  # Now correctly calculated!
+      `Category` = aqi_category,
+      `Counties Reporting` = counties_reporting,
+      `Good Days` = formatC(good_days, big.mark = ","),
+      `Unhealthy Days` = formatC(unhealthy_days, big.mark = ","),
+      `Park Visitors` = ifelse(is.na(visitors), "—", formatC(visitors, big.mark = ","))
+    ) %>%
+    arrange(desc(`Median AQI`))
+    
+}, striped = TRUE, hover = TRUE, bordered = TRUE)
+```
 
 Denali 
 ===============================================================================

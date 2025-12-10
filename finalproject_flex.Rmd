@@ -99,7 +99,7 @@ im_park_list <- sort(unique(im_parks$unit_name))
 All National Parks
 ======================================================================
 
-Column {data-width=300}
+Column {data-width=350}
 ----------------------------------------------------------------------
 
 ### National Parks Desriptions 
@@ -122,25 +122,27 @@ renderText({
 
 ### **About the Data**
 
-This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016. Additional data on state populations and entrance fees are included to enable regional and temporal comparisons.
+This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016, state population, and average gas price. 
 
 ### **Purpose of the Dashboard**
 
 The dashboard allows users to explore:
+
 - Total annual visitation trends over time  
-- Differences in visitation by U.S. region  
-- Park-level visitation trends across different eras  
 - Interactive views of individual park visitation patterns  
+- Annual state population 
+- Average annual gas price for selected year
 
 ### **How to Navigate**
 
 Use:
-- The **sidebar controls** to filter years or regions  
+
+- The **sidebar controls** to filter years  
 - The **interactive plots** (hover to see values)  
 - Tabs and rows to explore different panels in the dashboard 
 
 
-Column {data-width=700}
+Column {data-width=650}
 -----------------------------------------------------------------------
 
 ### Park Visitors, State Pop and Gas Prices by year
@@ -500,7 +502,7 @@ Denali
 
 
 ### Pane 2- Interactive Visitation Trend for Denali National Park
-```{r interactive_plot}
+```{r interactive_plot, eval=FALSE, include=FALSE}
 
 library(plotly)
 unique(park_visits$unit_name)

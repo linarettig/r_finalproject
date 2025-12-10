@@ -268,11 +268,11 @@ air_im <- air %>%
   mutate(
     median_aqi = round(raw_median_aqi / counties_reporting, 1),
     nthp = round(raw_nthp / counties_reporting, 1), 
-    # EPA AQI categorization based on corrected Median AQI
+    # EPA AQI categorization based on corrected 90th Percentile
     aqi_category = case_when(
-      median_aqi <= 50  ~ "Good",
-      median_aqi <= 100 ~ "Moderate",
-      median_aqi <= 150 ~ "Unhealthy (Sensitive)",
+      nthp <= 50  ~ "Good",
+      nthp <= 100 ~ "Moderate",
+      nthp <= 150 ~ "Unhealthy (Sensitive)",
       TRUE ~ "Unhealthy"
     ),
     aqi_color = case_when(

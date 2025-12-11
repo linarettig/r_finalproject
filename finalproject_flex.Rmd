@@ -103,7 +103,7 @@ im_park_list <- sort(unique(im_parks$unit_name))
 All National Parks
 ======================================================================
 
-Column {data-width=350}
+Column {.sidebar data-width=350}
 ----------------------------------------------------------------------
 
 ### National Parks Desriptions 

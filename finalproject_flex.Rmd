@@ -3,6 +3,8 @@ title: "Air Quality In National Park"
 output:
   flexdashboard::flex_dashboard:
     social: menu
+    orientation: rows
+    vertical_layout: fill
     source_code: https://github.com/linarettig/r_finalproject
 runtime: shiny 
 ---
@@ -205,24 +207,12 @@ observe({
 InterMountain Region 
 ================================================================================
 
-Row 
+Row {data-height = 50}
 -------------------------------------------------------------------------------
 
 ### Visitors by year
 
 ```{r}
-sliderInput(
-  inputId = "year_choice",
-  label   = "Select Year:",
-  min     = min(im_parks$year_num, na.rm = TRUE),
-  max     = max(im_parks$year_num, na.rm = TRUE),
-  value   = 2015,  # or min(im_parks$year_num, na.rm = TRUE)
-  step    = 1,
-  sep     = "",
-  animate = animationOptions(interval = 1200, loop = FALSE)
-)
-
-
 
 renderPlot({
   req(input$year_choice)
@@ -233,13 +223,21 @@ renderPlot({
 
   ggplot(df, aes(x = reorder(unit_name, visitors), y = visitors,fill = unit_name) ) +
     geom_col(show.legend = FALSE) +
-    coord_flip() +
     labs(
       title = paste("Intermountain Park Visitation –", input$year_choice),
-      x     = "Park",
+      x     = NULL,
       y     = "Number of visitors") +
-    theme_minimal(base_size = 14)
-})
+    scale_y_continuous(labels = scales::comma,
+    expand = expansion(mult = c(0, 0.05)))+
+    coord_flip()+
+    theme_minimal(base_size = 12) +
+  theme(
+    plot.margin = margin(t = 2, r = 2, b = 2, l = 2),
+    axis.text.y = element_text(size = 9),
+    axis.text.x = element_text(size = 9),
+    plot.title  = element_text(size = 14)
+  )
+}, height = 300)
 
 
 ```
@@ -377,13 +375,26 @@ Column {.sidebar data-width=250}
 ### Controls
 
 ```{r aqi_slider}
-sliderInput("aqi_year", "Select Year:",
+sliderInput("aqi_year", "Select Year for Air Quality:",
             min = min(aqi_years),
             max = max(aqi_years),
             value = 2015,
             step = 1,
             sep = "",
             animate = animationOptions(interval = 1200, loop = FALSE))
+
+sliderInput(
+  inputId = "year_choice",
+  label   = "Select Year for Park Visitation:",
+  min     = min(im_parks$year_num, na.rm = TRUE),
+  max     = max(im_parks$year_num, na.rm = TRUE),
+  value   = 2015,  # or min(im_parks$year_num, na.rm = TRUE)
+  step    = 1,
+  sep     = "",
+  animate = animationOptions(interval = 1200, loop = FALSE)
+)
+
+
 ```
 
 ### EPA AQI Categories

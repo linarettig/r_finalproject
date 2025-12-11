@@ -207,29 +207,37 @@ Row
 ### Visitors by year
 
 ```{r}
-selectInput(
-  inputId  = "park_choice",
-  label    = "Choose a park:",
-  choices  = im_park_list,
-  selected = "Yellowstone National Park"
+sliderInput(
+  inputId = "year_choice",
+  label   = "Select Year:",
+  min     = min(im_parks$year_num, na.rm = TRUE),
+  max     = max(im_parks$year_num, na.rm = TRUE),
+  value   = 2015,  # or min(im_parks$year_num, na.rm = TRUE)
+  step    = 1,
+  sep     = "",
+  animate = animationOptions(interval = 1200, loop = FALSE)
 )
 
+
+
 renderPlot({
-  req(input$park_choice)
+  req(input$year_choice)
 
   df <- im_parks %>% 
-    filter(unit_name == input$park_choice)
+    filter(year_num == input$year_choice,
+           unit_name != "Total Visitation")
 
-  ggplot(df, aes(x = year_num, y = visitors)) +
-    geom_line(linewidth = 1.2) +
-    geom_point() +
+  ggplot(df, aes(x = reorder(unit_name, visitors), y = visitors,fill = unit_name) ) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
     labs(
-      title = paste("Annual visitation –", input$park_choice),
-      x = "Year",
-      y = "Number of visitors"
-    ) +
+      title = paste("Intermountain Park Visitation –", input$year_choice),
+      x     = "Park",
+      y     = "Number of visitors") +
     theme_minimal(base_size = 14)
 })
+
+
 ```
 
 

@@ -17,6 +17,8 @@ library(sf)
 library(dplyr)
 library(scales)
 
+library(tigris)
+options(tigris_use_cache = TRUE)
 
 # Read in Data
 
@@ -99,12 +101,12 @@ im_park_list <- sort(unique(im_parks$unit_name))
 All National Parks
 ======================================================================
 
-Column {data-width=300}
+Column {data-width=350}
 ----------------------------------------------------------------------
 
 ### National Parks Desriptions 
 
-```{r Year slider and Dropdown}
+```{r Year slider}
 sliderInput("year_select", "Select Year:",
             min = min(years_available),
             max = max(years_available),
@@ -122,25 +124,27 @@ renderText({
 
 ### **About the Data**
 
-This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016. Additional data on state populations and entrance fees are included to enable regional and temporal comparisons.
+This dashboard uses data from the **TidyTuesday National Parks Visitation dataset** (2019-09-17 release), which contains annual visitor counts to U.S. National Parks from 1904–2016, state population, and average gas price. 
 
 ### **Purpose of the Dashboard**
 
 The dashboard allows users to explore:
+
 - Total annual visitation trends over time  
-- Differences in visitation by U.S. region  
-- Park-level visitation trends across different eras  
 - Interactive views of individual park visitation patterns  
+- Annual state population 
+- Average annual gas price for selected year
 
 ### **How to Navigate**
 
 Use:
-- The **sidebar controls** to filter years or regions  
+
+- The **sidebar controls** to filter years  
 - The **interactive plots** (hover to see values)  
 - Tabs and rows to explore different panels in the dashboard 
 
 
-Column {data-width=700}
+Column {data-width=650}
 -----------------------------------------------------------------------
 
 ### Park Visitors, State Pop and Gas Prices by year
@@ -265,6 +269,7 @@ air_im <- air %>%
     state = State,
     counties_reporting = `Cnty_Rpt`,
     raw_median_aqi = `Median AQI`,  # This is actually a SUM across counties
+    raw_nthp = `90th Percentile AQI`,
     good_days = `Good Days`,
     moderate_days = `Moderate Days`,
     unhealthy_days = `Unhealthy Days`,
@@ -274,11 +279,12 @@ air_im <- air %>%
   # Calculate the actual average median AQI across counties
   mutate(
     median_aqi = round(raw_median_aqi / counties_reporting, 1),
-    # EPA AQI categorization based on corrected Median AQI
+    nthp = round(raw_nthp / counties_reporting, 1), 
+    # EPA AQI categorization based on corrected 90th Percentile
     aqi_category = case_when(
-      median_aqi <= 50  ~ "Good",
-      median_aqi <= 100 ~ "Moderate",
-      median_aqi <= 150 ~ "Unhealthy (Sensitive)",
+      nthp <= 50  ~ "Good",
+      nthp <= 100 ~ "Moderate",
+      nthp <= 150 ~ "Unhealthy (Sensitive)",
       TRUE ~ "Unhealthy"
     ),
     aqi_color = case_when(
@@ -289,7 +295,6 @@ air_im <- air %>%
     )
   )
 
-# ===== FIX #2: Use the SAME park source as teammate (TidyTuesday) =====
 # Filter to IM region National Parks only, matching teammate's im_parks
 parks_im_coords <- park_visits %>%
   filter(region == "IM", unit_type == "National Park") %>%
@@ -357,6 +362,13 @@ parks_im_coords <- park_visits %>%
 
 # Years for slider
 aqi_years <- sort(unique(air_im$year))
+
+
+# Get state boundaries and filter to IM region
+im_state_shapes <- states(cb = TRUE, resolution = "20m") %>%
+  filter(NAME %in% im_states) %>%
+  st_transform(4326)  
+
 ```
 
 Column {.sidebar data-width=250}
@@ -406,7 +418,7 @@ parks_aqi_data <- reactive({
   
   aqi_year <- air_im %>% 
     filter(year == input$aqi_year) %>%
-    select(state, median_aqi, aqi_category, aqi_color, 
+    select(state, median_aqi, nthp, aqi_category, aqi_color, 
            good_days, unhealthy_days, hazardous_days, counties_reporting)
   
   parks_im_coords %>%
@@ -414,9 +426,22 @@ parks_aqi_data <- reactive({
     filter(!is.na(aqi_category))
 })
 
-# Render map
+# Reactive for state polygons with AQI data
+states_aqi_data <- reactive({
+  req(input$aqi_year)
+  
+  aqi_year <- air_im %>% 
+    filter(year == input$aqi_year) %>%
+    select(state, nthp, aqi_category, aqi_color)
+  
+  im_state_shapes %>%
+    left_join(aqi_year, by = c("NAME" = "state"))
+})
+
+# Render map output
 leafletOutput("aqi_leaflet")
 
+# Render map -- Using icon for park marker
 output$aqi_leaflet <- renderLeaflet({
   leaflet() %>%
     addTiles() %>%
@@ -425,37 +450,58 @@ output$aqi_leaflet <- renderLeaflet({
       position = "bottomright",
       colors = c("#00E400", "#FFFF00", "#FF7E00", "#FF0000"),
       labels = c("Good", "Moderate", "Unhealthy (Sensitive)", "Unhealthy"),
-      title = "AQI Category"
+      title = "State AQI (90th Percentile)"
     )
 })
 
 observe({
-  df <- parks_aqi_data()
-  if (nrow(df) == 0) return()
+  parks_df <- parks_aqi_data()
+  states_df <- states_aqi_data()
   
-  df <- df %>%
+  if (nrow(parks_df) == 0 || nrow(states_df) == 0) return()
+  
+  parks_df <- parks_df %>%
     mutate(
       popup_html = paste0(
-        "<b>", unit_name, "</b><br>",
-        "State: ", state_full, "<br>",
+        "<b style='font-size:14px;'>", unit_name, "</b><br>","<hr style='margin:5px 0;'>",
+        "<b>State:</b> ", state_full, "<br>",
         "Avg Median AQI: ", median_aqi, "<br>",
-        "Category: <span style='color:", aqi_color, ";font-weight:bold;'>", aqi_category, "</span><br>",
+        "<b>Avg 90th Percentile AQI: ", nthp, "<br>",
+        "<b>Category: <span style='color:", aqi_color, ";font-weight:bold;'>", aqi_category, "</span><br>",
         "<small>(Based on ", counties_reporting, " reporting counties)</small>"
       )
     )
   
-  leafletProxy("aqi_leaflet", data = df) %>%
+  leafletProxy("aqi_leaflet") %>%
+    clearShapes() %>%
     clearMarkers() %>%
-    addCircleMarkers(
-      lng = ~lon, lat = ~lat,
-      radius = 10,
+    # Bottom layer: State polygons colored by AQI
+    addPolygons(
+      data = states_df,
       fillColor = ~aqi_color,
-      color = "#333",
-      weight = 1.5,
-      fillOpacity = 0.85,
+      fillOpacity = 0.5,
+      color = "#444",
+      weight = 2,
+      label = ~paste(NAME, "- 90th Percentile AQI:", nthp),
+      highlightOptions = highlightOptions(
+        weight = 3,
+        color = "#000",
+        fillOpacity = 0.7
+      )
+    ) %>%
+    # Top layer: Park markers as circle
+    addCircleMarkers(
+      data = parks_df,
+      lng = ~lon, lat = ~lat,
+      radius = 8,
+      fillColor = "#00868B",
+      color = "#000000",
+      weight = 2,
+      fillOpacity = 0.9,
       popup = ~popup_html,
-      label = ~paste(unit_name, "-", aqi_category)
+      label = ~unit_name
     )
+
 })
 ```
 
@@ -492,6 +538,7 @@ renderTable({
     transmute(
       State = state,
       `Median AQI` = median_aqi,  # Now correctly calculated!
+      `90th Percentile` = nthp,
       `Category` = aqi_category,
       `Counties Reporting` = counties_reporting,
       `Good Days` = formatC(good_days, big.mark = ","),
@@ -503,34 +550,42 @@ renderTable({
 }, striped = TRUE, hover = TRUE, bordered = TRUE)
 ```
 
-Denali 
+ 
 ===============================================================================
 
 
-### Pane 2- Interactive Visitation Trend for Denali National Park
+### Interactive Visitation Trend for Denali National Park
+
 ```{r interactive_plot, warning = FALSE}
 
+
 library(plotly)
+library(dplyr)
+library(stringr)
+library(ggplot2)
 
-demo <- park_visits %>% filter(str_detect(unit_name, "Denali"))
+demo <- park_visits %>%
+  filter(str_detect(unit_name, "Denali")) %>%          
+  mutate(
+    year = as.numeric(year),                           
+    visitors = as.numeric(visitors)                    
+  ) %>%
+  filter(!is.na(year)) %>%                             
+  arrange(year)                                        
 
-demo <- park_visits %>% 
-  filter(str_detect(unit_name, "Denali")) %>%
-  mutate(year = as.numeric(year))
-
-demo_year <- demo %>% 
-  pull(year) 
 
 p <- ggplot(demo, aes(x = year, y = visitors)) +
-     geom_line(color = "steelblue", linewidth = 1) +
-     geom_point(size = 0.7, alpha = 0.6) +
-     scale_x_continuous(breaks = seq(min(demo_year, na.rm = TRUE), 
-                                     max(demo_year, na.rm = TRUE), 
-                                     by = 10)) +
-     scale_y_continuous(limits = c(0, 200000)) + 
-     labs(title = "Visitation Trend: Denali National Park",
-          x = "Year",
-          y = "Visitors")
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(size = 0.7, alpha = 0.6) +
+  scale_x_continuous(
+    breaks = seq(min(demo$year), max(demo$year), by = 10)
+  ) +
+  labs(
+    title = "Visitation Trend: Denali National Park",
+    x = "Year",
+    y = "Visitors"
+  ) +
+  theme_minimal(base_size = 14)
 
 ggplotly(p)
 

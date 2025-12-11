@@ -561,9 +561,9 @@ renderTable({
 }, striped = TRUE, hover = TRUE, bordered = TRUE)
 ```
 
- 
-===============================================================================
 
+Denali 
+===============================================================================
 
 ### Interactive Visitation Trend for Denali National Park
 

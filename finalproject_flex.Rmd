@@ -209,41 +209,44 @@ InterMountain Region
 
 Row {data-height = 50}
 -------------------------------------------------------------------------------
-
 ### Visitors by year
 
 ```{r}
-
 renderPlot({
-  req(input$year_choice)
+  req(input$im_year)
 
   df <- im_parks %>% 
-    filter(year_num == input$year_choice,
+    filter(year_num == input$im_year,
            unit_name != "Total Visitation")
 
-  ggplot(df, aes(x = reorder(unit_name, visitors), y = visitors,fill = unit_name) ) +
+  ggplot(df, aes(x = reorder(unit_name, visitors), y = visitors, fill = unit_name)) +
     geom_col(show.legend = FALSE) +
     labs(
-      title = paste("Intermountain Park Visitation –", input$year_choice),
+      title = paste("Intermountain Park Visitation –", input$im_year),
       x     = NULL,
-      y     = "Number of visitors") +
-    scale_y_continuous(labels = scales::comma,
-    expand = expansion(mult = c(0, 0.05)))+
-    coord_flip()+
+      y     = "Number of visitors"
+    ) +
+    scale_y_continuous(
+      labels = scales::comma,
+      expand = expansion(mult = c(0, 0.05))
+    ) +
+    coord_flip() +
     theme_minimal(base_size = 12) +
-  theme(
-    plot.margin = margin(t = 2, r = 2, b = 2, l = 2),
-    axis.text.y = element_text(size = 9),
-    axis.text.x = element_text(size = 9),
-    plot.title  = element_text(size = 14)
-  )
+    theme(
+      plot.margin = margin(t = 2, r = 2, b = 2, l = 2),
+      axis.text.y = element_text(size = 9),
+      axis.text.x = element_text(size = 9),
+      plot.title  = element_text(size = 14)
+    )
 }, height = 250)
+
 
 
 ```
 
 
 ------------------------
+
 
 
 ```{r aqi_data_setup}
@@ -375,24 +378,27 @@ Column {.sidebar data-width=250}
 ### Controls
 
 ```{r aqi_slider}
-sliderInput("aqi_year", "Select Year for Air Quality:",
-            min = min(aqi_years),
-            max = max(aqi_years),
-            value = 2015,
-            step = 1,
-            sep = "",
-            animate = animationOptions(interval = 1200, loop = FALSE))
+
+# Years for slider
+aqi_years <- sort(unique(air_im$year))
+
+# Years available for IM park visitation
+im_years <- sort(unique(im_parks$year_num))
+
+# Common years present in BOTH datasets
+im_common_years <- sort(intersect(aqi_years, im_years))
 
 sliderInput(
-  inputId = "year_choice",
-  label   = "Select Year for Park Visitation:",
-  min     = min(im_parks$year_num, na.rm = TRUE),
-  max     = max(im_parks$year_num, na.rm = TRUE),
-  value   = 2015,  # or min(im_parks$year_num, na.rm = TRUE)
+  inputId = "im_year",
+  label   = "Select Year:",
+  min     = min(im_common_years),
+  max     = max(im_common_years),
+  value   = max(im_common_years),  # or pick a specific year like 2015
   step    = 1,
   sep     = "",
   animate = animationOptions(interval = 1200, loop = FALSE)
 )
+
 
 
 ```
@@ -420,15 +426,16 @@ Use:
 Column {data-width=750}
 -----------------------------------------------------------------------
 
+
 ### Park Air Quality Map
 
 ```{r aqi_map}
 # Reactive: filter AQI and join with parks
 parks_aqi_data <- reactive({
-  req(input$aqi_year)
+  req(input$im_year)
   
   aqi_year <- air_im %>% 
-    filter(year == input$aqi_year) %>%
+  filter(year == input$im_year) %>%
     select(state, median_aqi, nthp, aqi_category, aqi_color, 
            good_days, unhealthy_days, hazardous_days, counties_reporting)
   
@@ -439,10 +446,10 @@ parks_aqi_data <- reactive({
 
 # Reactive for state polygons with AQI data
 states_aqi_data <- reactive({
-  req(input$aqi_year)
+  req(input$im_year)
   
-  aqi_year <- air_im %>% 
-    filter(year == input$aqi_year) %>%
+aqi_year <- air_im %>% 
+  filter(year == input$im_year) %>%
     select(state, nthp, aqi_category, aqi_color)
   
   im_state_shapes %>%
@@ -520,11 +527,11 @@ observe({
 
 ```{r aqi_table}
 renderTable({
-  req(input$aqi_year)
+  req(input$im_year)
   
   # Get visitors for the year from TidyTuesday data (matching teammate's source)
-  visitors <- im_parks %>%
-    filter(year_num == input$aqi_year, unit_name != "Total Visitation") %>%
+visitors <- im_parks %>%
+  filter(year_num == input$im_year, unit_name != "Total Visitation") %>%
     mutate(state_full = case_when(
       unit_name %in% c("Yellowstone National Park", "Grand Teton National Park") ~ "Wyoming",
       unit_name %in% c("Rocky Mountain National Park", "Mesa Verde National Park", 
@@ -543,8 +550,8 @@ renderTable({
     summarize(visitors = sum(visitors, na.rm = TRUE), .groups = "drop")
   
   # Build table with CORRECTED median AQI values
-  air_im %>%
-    filter(year == input$aqi_year) %>%
+air_im %>%
+  filter(year == input$im_year) %>%
     left_join(visitors, by = c("state" = "state_full")) %>%
     transmute(
       State = state,
@@ -561,9 +568,10 @@ renderTable({
 }, striped = TRUE, hover = TRUE, bordered = TRUE)
 ```
 
+ 
 
-Denali 
-===============================================================================
+Denali
+================================================================================
 
 ### Interactive Visitation Trend for Denali National Park
 

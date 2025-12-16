@@ -149,7 +149,7 @@ Use:
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Park Visitors, State Pop and Gas Prices by year
+### Park Visitors, State Pop and Gas Prices by Year
 
 ```{r}
 # Reactive expression to filter data based on slider input 
